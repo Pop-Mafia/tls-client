@@ -215,10 +215,9 @@ func getMMSClientProfile3() ClientProfile {
 var PopMartIos1 = getPopMartClientProfile1()
 
 func getPopMartClientProfile1() ClientProfile {
-	clientHelloId := tls.ClientHelloID{
+	clientHelloID := tls.ClientHelloID{
 		Client:  "PopMartIos",
 		Version: "4.8.3",
-		Seed:    nil,
 		SpecFactory: func() (tls.ClientHelloSpec, error) {
 			return tls.ClientHelloSpec{
 				CipherSuites: []uint16{
@@ -244,25 +243,23 @@ func getPopMartClientProfile1() ClientProfile {
 					tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
 					tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 				},
-				CompressionMethods: []uint8{
-					uint8(tls.CertCompressionZlib),
-				},
+				CompressionMethods: []uint8{tls.CompressionNone},
 				Extensions: []tls.TLSExtension{
+					// --- 1st GREASE (zero-length) --------------------------------
 					&tls.UtlsGREASEExtension{},
+					// --------------------------------------------------------------
 					&tls.SNIExtension{},
 					&tls.ExtendedMasterSecretExtension{},
 					&tls.RenegotiationInfoExtension{Renegotiation: tls.RenegotiateOnceAsClient},
 					&tls.SupportedCurvesExtension{Curves: []tls.CurveID{
-						tls.GREASE_PLACEHOLDER,
+						tls.GREASE_PLACEHOLDER, // GREASE
+						tls.X25519MLKEM768,     // 0x11EC – must precede x25519
 						tls.X25519,
-						tls.X25519MLKEM768,
 						tls.CurveSECP256R1,
 						tls.CurveSECP384R1,
 						tls.CurveSECP521R1,
 					}},
-					&tls.SupportedPointsExtension{SupportedPoints: []uint8{
-						tls.CompressionNone,
-					}},
+					&tls.SupportedPointsExtension{SupportedPoints: []uint8{tls.CompressionNone}},
 					&tls.ALPNExtension{AlpnProtocols: []string{"h2", "http/1.1"}},
 					&tls.StatusRequestExtension{},
 					&tls.SignatureAlgorithmsExtension{SupportedSignatureAlgorithms: []tls.SignatureScheme{
@@ -271,20 +268,19 @@ func getPopMartClientProfile1() ClientProfile {
 						tls.PKCS1WithSHA256,
 						tls.ECDSAWithP384AndSHA384,
 						tls.PSSWithSHA384,
-						tls.PSSWithSHA384,
+						tls.PSSWithSHA384, // duplicate is intentional
 						tls.PKCS1WithSHA384,
 						tls.PSSWithSHA512,
 						tls.PKCS1WithSHA512,
 						tls.PKCS1WithSHA1,
 					}},
 					&tls.SCTExtension{},
-					&tls.KeyShareExtension{[]tls.KeyShare{
-						{Group: tls.CurveID(tls.GREASE_PLACEHOLDER), Data: []byte{0}},
-						{Group: tls.X25519},
+					&tls.KeyShareExtension{KeyShares: []tls.KeyShare{
+						{Group: tls.CurveID(tls.GREASE_PLACEHOLDER), Data: []byte{0}}, // GREASE
+						{Group: tls.X25519MLKEM768},                                   // 1216-byte hybrid share
+						{Group: tls.X25519},                                           // classic X25519
 					}},
-					&tls.PSKKeyExchangeModesExtension{Modes: []uint8{
-						tls.PskModeDHE,
-					}},
+					&tls.PSKKeyExchangeModesExtension{Modes: []uint8{tls.PskModeDHE}},
 					&tls.SupportedVersionsExtension{Versions: []uint16{
 						tls.GREASE_PLACEHOLDER,
 						tls.VersionTLS13,
@@ -292,30 +288,40 @@ func getPopMartClientProfile1() ClientProfile {
 						tls.VersionTLS11,
 						tls.VersionTLS10,
 					}},
-					&tls.UtlsCompressCertExtension{[]tls.CertCompressionAlgo{
+					&tls.UtlsCompressCertExtension{Algorithms: []tls.CertCompressionAlgo{
 						tls.CertCompressionZlib,
 					}},
+					// --- 2nd GREASE (one-byte body “00”) --------------------------
+					&tls.UtlsGREASEExtension{Body: []byte{0}},
+					// --------------------------------------------------------------
 				},
 			}, nil
 		},
 	}
 
-	settings := map[http2.SettingID]uint32{
+	// HTTP/2 layer (unchanged from the original profile)
+	h2Settings := map[http2.SettingID]uint32{
 		http2.SettingMaxConcurrentStreams: 100,
 		http2.SettingInitialWindowSize:    2097152,
 	}
-
-	settingsOrder := []http2.SettingID{
+	h2SettingsOrder := []http2.SettingID{
 		http2.SettingInitialWindowSize,
 		http2.SettingMaxConcurrentStreams,
 	}
-
-	pseudoHeaderOrder := []string{
+	h2PseudoHeaderOrder := []string{
 		":method",
 		":scheme",
 		":path",
 		":authority",
 	}
 
-	return NewClientProfile(clientHelloId, settings, settingsOrder, pseudoHeaderOrder, 10485760, nil, nil)
+	return NewClientProfile(
+		clientHelloID,
+		h2Settings,
+		h2SettingsOrder,
+		h2PseudoHeaderOrder,
+		/* maxFrameSize */ 10*1024*1024,
+		nil, // header order
+		nil, // connection flow control
+	)
 }
