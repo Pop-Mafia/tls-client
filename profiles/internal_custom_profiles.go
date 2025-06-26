@@ -255,6 +255,7 @@ func getPopMartClientProfile1() ClientProfile {
 					&tls.SupportedCurvesExtension{Curves: []tls.CurveID{
 						tls.GREASE_PLACEHOLDER,
 						tls.X25519MLKEM768,
+						tls.X25519,
 						tls.CurveSECP256R1,
 						tls.CurveSECP384R1,
 						tls.CurveSECP521R1,
@@ -279,7 +280,6 @@ func getPopMartClientProfile1() ClientProfile {
 					&tls.SCTExtension{},
 					&tls.KeyShareExtension{[]tls.KeyShare{
 						{Group: tls.CurveID(tls.GREASE_PLACEHOLDER), Data: []byte{0}},
-						{Group: tls.X25519MLKEM768},
 						{Group: tls.X25519},
 					}},
 					&tls.PSKKeyExchangeModesExtension{Modes: []uint8{
@@ -295,7 +295,6 @@ func getPopMartClientProfile1() ClientProfile {
 					&tls.UtlsCompressCertExtension{[]tls.CertCompressionAlgo{
 						tls.CertCompressionZlib,
 					}},
-					&tls.UtlsGREASEExtension{},
 				},
 			}, nil
 		},
