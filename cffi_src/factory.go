@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"sync"
@@ -476,6 +477,7 @@ func getTlsClientProfile(tlsClientIdentifier string) profiles.ClientProfile {
 	tlsClientProfile, ok := profiles.MappedTLSClients[tlsClientIdentifier]
 
 	if !ok {
+		log.Fatal("no clientProfile named as %v", tlsClientIdentifier)
 		return profiles.DefaultClientProfile
 	}
 
