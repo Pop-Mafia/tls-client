@@ -245,7 +245,7 @@ func getPopMartClientProfile1() ClientProfile {
 					tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 				},
 				CompressionMethods: []uint8{
-					tls.CompressionNone,
+					uint8(tls.CertCompressionZlib),
 				},
 				Extensions: []tls.TLSExtension{
 					&tls.UtlsGREASEExtension{},
@@ -254,8 +254,8 @@ func getPopMartClientProfile1() ClientProfile {
 					&tls.RenegotiationInfoExtension{Renegotiation: tls.RenegotiateOnceAsClient},
 					&tls.SupportedCurvesExtension{Curves: []tls.CurveID{
 						tls.GREASE_PLACEHOLDER,
-						tls.X25519MLKEM768,
 						tls.X25519,
+						tls.X25519MLKEM768,
 						tls.CurveSECP256R1,
 						tls.CurveSECP384R1,
 						tls.CurveSECP521R1,
